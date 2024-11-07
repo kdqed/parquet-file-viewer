@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Parquet File Viewer</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: monospace;
+      }
+
+      :root {
+        font-size: 20px;
+      }
+
+      table {
+        border-collapse: collapse;
+      }
+      
+      thead {
+        position: sticky;
+        top: 0;
+        left: 0;
+      }
+
+      thead th {
+        background: black;
+        color: white;
+        border: 1px solid black;
+        padding: 8px 16px;
+        text-align: left;
+      }
+
+      tbody td {
+        padding: 8px 16px;
+        border: 1px solid white;
+      }
+
+      tbody tr:nth-child(2n) td {
+        background: #e0e0e0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id='topbar'>
+      <input type='file' name='input-file'>
+    </div>
+    <table id='display'>
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+  </body>
+  <script>
+    let $qs = (el) => document.querySelector(el);
+    let $qsa = (els) => document.querySelectorAll(els);
+    
+    (async () => {
+      const {parquetMetadata, parquetRead} = await import('https://cdn.jsdelivr.net/npm/hyparquet/src/hyparquet.min.js');
+
+      const fileInput = $qs('input[name="input-file"]');
+      const tHead = $qs('#display thead');
+      const tBody = $qs('#display tbody');
+      
+      fileInput.addEventListener('change', async () => {
+        const [file] = fileInput.files;
+        if (!file) {
+          return;
+        }
+        
+        const ab = await file.arrayBuffer();
+        const metadata = parquetMetadata(ab);
+        
+        await parquetRead({
+          file: ab,
+          onComplete: (rows) => {
+            let head = '<tr>';
+            metadata.row_groups[0].columns.forEach((col) => {
+              head += `<th>${col.meta_data.path_in_schema[0]}</th>`;
+            });
+            head += '</tr>'
+            tHead.innerHTML = head;
+
+            let body = '';
+            rows.forEach((r) => {
+              body += '<tr>';
+              r.forEach((val) => {
+                body += `<td>${val}</td>`;
+              });
+              body += '</tr>';
+            });
+            tBody.innerHTML = body;
+          }
+        });
+        
+      });      
+    })();
+  </script>
+</html>
